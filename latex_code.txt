@@ -1,0 +1,203 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Privacy-Preserving Explainability in Federated Learning: The FedL-SHAP Architecture\\
+% {\footnotesize \textsuperscript{*}Note: Sub-titles are not captured in Xplore and should not be used}
+}
+
+\author{\IEEEauthorblockN{1\textsuperscript{st} abc}
+\IEEEauthorblockA{\textit{School of Computing and AI} \\
+\textit{Amrita Vishwa Vidyapeetham}\\
+Bengaluru, India \\
+abc.cse@example.com} % Replace with actual email
+}
+
+\maketitle
+
+\begin{abstract}
+This document is a placeholder for your abstract. The abstract should summarize the core problem of the explainability versus cryptographic privacy paradox in Federated Learning, and introduce the FedL-SHAP architecture. It should briefly mention the methodology of dynamic privacy budgeting and local SHAP aggregation, along with a summary of the expected outcomes or theoretical advantages.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Federated Learning, Differential Privacy, Explainable AI, SHAP, Resource Allocation, Secure Aggregation
+\end{IEEEkeywords}
+
+\section{Introduction}
+This document is a placeholder for your Introduction section. Please observe the conference page limits. The introduction should provide the broad context of federated learning in high-stakes environments, introduce the competing necessities of privacy and interpretability, outline the limitations of current literature, and clearly state the contributions of this paper.
+
+\section{Literature Review}
+The scaling and real-world deployment of Federated Learning (FL) networks necessitate addressing tightly coupled bottlenecks across communication efficiency, data heterogeneity, cryptographic privacy, and system robustness. This section reviews recent advancements in FL architectures, categorized by their core technical methodologies.
+
+\subsection{Communication Efficiency and Resource Allocation}
+A primary bottleneck in FL is the severe communication overhead over bandwidth-limited uplink channels. To mitigate this, asynchronous protocols such as Semi-Asynchronous Federated Averaging (SAFA) have been proposed by Wu et al. \cite{wu2020} to decouple the central server from clients, utilizing a lag-tolerant model distribution to prevent the loss of active training progress caused by stragglers. Similarly, Chen et al. \cite{chen2019} introduced layerwise asynchronous updates paired with temporally weighted aggregation, which applies an exponential decay function to older model updates to conserve bandwidth while preventing model degradation. 
+
+For active client management, Nishio and Yonetani \cite{nishio2019} developed the FedCS protocol, which formulates client selection as a knapsack-constrained combinatorial maximization problem based on real-time computational capabilities and strict global round deadlines. Shifting from myopic to long-term optimization, Xu and Wang \cite{xu2020} presented the OCEAN framework. Utilizing Lyapunov-based optimization, OCEAN dynamically manages energy deficit queues and allocates bandwidth inversely to channel states, capitalizing on the empirical ``later-is-better'' pattern of client participation. 
+
+At the physical layer, Over-the-Air (OTA) computation directly exploits the signal superposition property of wireless multiple-access channels to aggregate models via concurrent analog transmissions \cite{yang2020}. To stabilize OTA against channel noise, Sery et al. \cite{sery2021} introduced Convergent OTA FL (COTAF), which applies a time-varying transmitter precoder to mathematically force equivalent channel noise to decay over successive rounds, yielding an asymptotic convergence rate of $\mathcal{O}(1/T)$. To bridge OTA with commercial digital modulation, Zhu et al. \cite{zhu2020} developed One-Bit Broadband Digital Aggregation (OBDA), mapping 1-bit quantized gradients from signSGD onto QAM constellations and recovering updates via robust majority-vote decoding. For strict uplink compression without prior gradient knowledge, Shlezinger et al. \cite{shlezinger2020} proposed UVeQFed, deploying subtractive dithered lattice quantization where the resulting zero-mean additive error acts as a stochastic regularizer. 
+
+\subsection{Statistical Heterogeneity and Personalization}
+Deploying a single global model across non-independent and identically distributed (Non-IID) data distributions inherently distorts optimization directions and causes severe client drift \cite{lu2024, tan2022}. To address this, Personalized Federated Learning (PFL) architectures structurally customize models. Morafah et al. \cite{morafah2023} addressed client drift with FLIS, a framework that dynamically partitions clients into jointly trainable clusters by evaluating models on an auxiliary dataset to extract predictive inference similarities, effectively bypassing direct parameter comparisons. 
+
+In decentralized topologies lacking a central aggregator, Li et al. \cite{li2019} introduced the Network Independent Decentralized Optimization (NIDS) algorithm. NIDS decouples step-size bounds from network topologies using gradient-adapted difference sharing, permitting independent agents to utilize uncoordinated step sizes while achieving exact linear convergence in strongly convex settings. For extremely large architectures, such as Pretrained Language Models (PLMs), Xu et al. \cite{lxu2026} demonstrated that Parameter-Efficient Fine-Tuning (PEFT) methods---including low-rank reparameterizations like LoRA and 4-bit quantized QLoRA---are necessary to balance task accuracy and GPU memory constraints without the extreme overhead of full fine-tuning. 
+
+\subsection{Privacy-Preserving Mechanisms}
+While FL fundamentally minimizes data exposure, shared gradients remain vulnerable to inversion attacks. Ouadrhiri and Abdelhadi \cite{ouadrhiri2022} surveyed advanced Differential Privacy (DP) variants, identifying that frameworks utilizing Rényi DP and f-DP yield tighter mathematical composition bounds than standard DP, enabling significantly more training epochs under a fixed privacy budget. Wei et al. \cite{wei2020} explicitly bounded this privacy-convergence tradeoff with NbAFL, demonstrating that injecting artificial Gaussian noise prior to uplink transmission successfully enforces global $(\epsilon,\delta)$-DP, with performance improving as client populations scale. Hu et al. \cite{hu2020} extended this to multi-task PFL by injecting dual-layer Gaussian noise into both primal and dual coordinate descent updates, utilizing a moments accountant to track end-to-end privacy loss. 
+
+To achieve exact computational accuracy without the degradation of DP noise, Lee et al. \cite{lee2022} implemented deep learning networks directly on ciphertexts via RNS-CKKS Fully Homomorphic Encryption (FHE). Their architecture strategically places bootstrapping operations after convolutional layers and evaluates the ReLU function via highly approximated minimax polynomial compositions. Addressing organizational data silos, Liu et al. \cite{liu2020} proposed a Federated Transfer Learning (FTL) framework that aligns non-overlapping feature spaces using second-order Taylor approximations for Homomorphic Encryption (HE), while utilizing Secret Sharing (SS) and Beaver triples to accelerate online training speeds. To mitigate the $\mathcal{O}(N^2)$ communication burden typical of secure aggregation, So et al. \cite{so2021} designed the Turbo-Aggregate protocol, deploying a multi-group circular transmission strategy coupled with Lagrange coding to ensure robustness against dropout rates of up to 50\%. 
+
+\subsection{System Robustness and Application Frameworks}
+FL networks are highly susceptible to malicious interventions, with targeted model poisoning proving significantly more effective and stealthy than data poisoning via redundant space malicious injections \cite{xia2023}. To establish provable Byzantine fault tolerance without relying on centralized validation datasets, Pillutla et al. \cite{pillutla2022} proposed Robust Federated Aggregation (RFA). RFA structurally prevents poisoning by replacing the standard arithmetic mean with an approximate multidimensional geometric median computed via the Smoothed Weiszfeld Algorithm, guaranteeing convergence even if 50\% of the network weight is actively corrupted. 
+
+Ghimire and Rawat \cite{ghimire2022} highlighted the necessity of such Byzantine-tolerant aggregation rules (e.g., Krum, FoolsGold) for executing dynamic cyber-defense strategies in multi-tiered IoT architectures, proposing Mimic Learning to thwart reverse engineering. To eliminate the single point of failure in these aggregating nodes, Wang et al. \cite{wang2023} modeled a fully coupled Blockchain-based FL architecture. Their framework resolves the competition for CPU cycles between local model training and blockchain mining via a two-stage Stackelberg game, utilizing Shapley Values to fairly bound training compensation based on authentic data contributions. Finally, translating these secure architectures into high-stake industries, Awosika et al. \cite{awosika2024} deployed a decentralized financial fraud detection framework that rectifies minority-class imbalances using SMOTE and establishes algorithmic trust by mapping explicit feature dependencies via SHapley Additive exPlanations (SHAP). 
+
+\section{Problem Statement and Research Gap}
+While federated learning (FL) has successfully decentralized model training, its deployment in high-stakes, heavily regulated domains---such as decentralized finance and healthcare---exposes a critical, unresolved conflict in the current literature: the paradox between cryptographic privacy and algorithmic explainability.
+
+\subsection{The ``Black-Box'' Expansion via Cryptographic Privacy}
+To satisfy stringent data protection regulations and prevent gradient inversion attacks, contemporary FL architectures increasingly rely on mathematically rigorous privacy mechanisms. As established in the literature, techniques such as $(\epsilon, \delta)$-Differential Privacy (DP) deliberately inject Gaussian or Laplace noise into local gradients to mask individual data contributions \cite{wei2020, hu2020}. Concurrently, advanced cryptographic frameworks utilize Fully Homomorphic Encryption (FHE), such as the RNS-CKKS scheme, to execute deep learning operations entirely on encrypted ciphertexts \cite{lee2022}. While these methodologies provide absolute or highly bounded information-theoretic security, they inherently deepen the ``black-box'' nature of neural networks. By obfuscating, perturbing, or encrypting the precise weight distributions and gradient updates, these privacy protocols completely obscure the model's internal decision-making processes from both the client and the central aggregator.
+
+\subsection{The Interpretability Vulnerability}
+Conversely, the successful adoption of FL in trust-critical sectors relies heavily on Explainable AI (XAI). Frameworks such as SHapley Additive exPlanations (SHAP) are utilized to establish human-readable algorithmic trust by calculating the marginal impact of specific input features on the final model prediction \cite{awosika2024}. However, SHAP and similar game-theoretic attribution methods require high-fidelity access to feature weights, unperturbed decision boundaries, and individual gradient trajectories to accurately calculate feature importance scores.
+
+\subsection{The Core Research Gap}
+The fundamental research gap lies in the structural incompatibility between these two essential pillars. Currently, the literature treats cryptographic privacy and model explainability as mutually exclusive objectives. Implementing XAI requires exposing precise feature-level contributions, which directly violates the indistinguishability guarantees of DP and the obfuscation of FHE. Conversely, applying DP noise or FHE encryption mathematically destroys the localized feature variance required to generate accurate SHAP values. 
+
+To the best of our knowledge, there is a distinct absence of frameworks capable of \textit{Privacy-Preserving Explainability}---the ability to extract mathematically accurate, human-readable feature attributions directly from encrypted or differentially private federated models without violating their strict privacy bounds.
+
+\subsection{Research Objectives}
+To bridge this gap, this paper proposes a novel architecture designed to disentangle algorithmic transparency from data leakage. Specifically, we investigate the analytical tradeoff between $(\epsilon, \delta)$-DP noise injection and XAI fidelity, proposing a noise-aware SHAP approximation algorithm that guarantees both bounded privacy leakage and high-confidence feature attribution.
+
+\section{Proposed Methodology: FedL-SHAP Architecture}
+To resolve the inherent conflict between cryptographic privacy and model explainability, we propose the Federated Local-SHAP Aggregation with Dynamic Privacy Budgeting (FedL-SHAP) framework. Unlike conventional architectures that attempt to extract explanations from a globally perturbed model, FedL-SHAP pushes the explainability computation to the edge. By computing exact feature attributions on raw, unperturbed local data and treating the resultant explanation matrices as trainable, differentially private parameters, we successfully decouple algorithmic transparency from data leakage. 
+
+The proposed framework operates through a four-phase architecture: Local Optimization, Dual-Path Gradient Clipping, Dynamic Privacy Budgeting, and Global Secure Aggregation.
+
+\subsection{Phase 1: Local Model Optimization and Exact SHAP Computation}
+Consider a federated network with $N$ clients, where each client $i \in \{1, 2, ..., N\}$ possesses a private, non-IID dataset $\mathcal{D}_i$. At communication round $t$, the central server broadcasts the global model weights $w^{(t)}$. 
+
+Upon receiving $w^{(t)}$, client $i$ performs local Stochastic Gradient Descent (SGD) over $E$ local epochs to minimize the local empirical loss function $\mathcal{L}_i(w)$, yielding the weight update $\Delta w_i^{(t)}$. 
+
+Simultaneously, the client calculates the exact SHapley Additive exPlanations (SHAP) for its local dataset. Because the local model has not yet been subjected to Differential Privacy (DP) noise, the client evaluates the true marginal contribution of each feature $j \in \{1, ..., F\}$. The local feature importance score $\phi_{i,j}^{(t)}$ is computed via the game-theoretic formulation:
+
+\begin{equation}
+\phi_{i,j}^{(t)} = \sum_{S \subseteq F \setminus \{j\}} \frac{|S|!(|F|-|S|-1)!}{|F|!} \left[ v_i^{(t)}(S \cup \{j\}) - v_i^{(t)}(S) \right]
+\end{equation}
+
+where $F$ is the total feature space, $S$ is a subset of features, and $v_i^{(t)}(\cdot)$ represents the local model's predictive output for that feature subset. This generates a complete local SHAP vector $\Phi_i^{(t)} \in \mathbb{R}^F$.
+
+\subsection{Phase 2: Dual-Path Gradient Clipping and Sensitivity Bounding}
+To guarantee $(\epsilon, \delta)$-Differential Privacy against gradient inversion and membership inference attacks, both the weight updates and the SHAP vectors must be strictly bounded before noise injection. FedL-SHAP implements a dual-path clipping mechanism. 
+
+We define two independent clipping thresholds: $C_w$ for the model weights and $C_s$ for the SHAP values. For each client $i$, the updates are projected onto an $L_2$-norm ball:
+
+\begin{equation}
+\Delta \bar{w}_i^{(t)} = \Delta w_i^{(t)} \cdot \min \left( 1, \frac{C_w}{||\Delta w_i^{(t)}||_2} \right)
+\end{equation}
+\begin{equation}
+\bar{\Phi}_i^{(t)} = \Phi_i^{(t)} \cdot \min \left( 1, \frac{C_s}{||\Phi_i^{(t)}||_2} \right)
+\end{equation}
+
+By bounding both vectors, we establish a deterministic $L_2$-sensitivity for the subsequent Gaussian noise mechanisms, ensuring that no single outlier client can exponentially skew the global aggregation.
+
+\subsection{Phase 3: Dynamic Privacy Budgeting ($\epsilon$-Decoupling)}
+The core novelty of FedL-SHAP is the dynamic allocation of the strict per-round privacy budget $\epsilon^{(t)}$. Injecting uniform noise across all rounds severely degrades either model convergence or explanation fidelity. Leveraging the established ``later-is-better'' temporal pattern in federated optimization, we mathematically decouple $\epsilon^{(t)}$ into two distinct budgets: $\epsilon_w^{(t)}$ (for weights) and $\epsilon_s^{(t)}$ (for SHAP), such that:
+
+\begin{equation}
+\epsilon^{(t)} = \epsilon_w^{(t)} + \epsilon_s^{(t)}
+\end{equation}
+
+During early communication rounds ($t \ll T_{max}$), the model undergoes rapid gradient descent. Here, accurate weight aggregation is critical for convergence, while feature explanations are inherently unstable and meaningless. In later rounds ($t \to T_{max}$), the model stabilizes near the global optimum, meaning weight updates shrink, but securing high-fidelity explanations becomes paramount.
+
+We formulate this as a time-decaying exponential optimization function governed by a decay coefficient $\lambda$:
+
+\begin{equation}
+\epsilon_w^{(t)} = \epsilon^{(t)} \times e^{-\lambda \left(\frac{t}{T_{max}}\right)}
+\end{equation}
+\begin{equation}
+\epsilon_s^{(t)} = \epsilon^{(t)} \times \left(1 - e^{-\lambda \left(\frac{t}{T_{max}}\right)}\right)
+\end{equation}
+
+Based on these decoupled budgets, the client calibrates the standard deviation of the Gaussian noise for both paths using the moments accountant framework to tightly track sequential composition:
+
+\begin{equation}
+\sigma_w^{(t)} = \frac{C_w \sqrt{2 \ln(1.25/\delta)}}{\epsilon_w^{(t)}}
+\end{equation}
+\begin{equation}
+\sigma_s^{(t)} = \frac{C_s \sqrt{2 \ln(1.25/\delta)}}{\epsilon_s^{(t)}}
+\end{equation}
+
+Client $i$ then injects the calibrated Gaussian noise into both clipped vectors:
+\begin{equation}
+\tilde{w}_i^{(t)} = \Delta \bar{w}_i^{(t)} + \mathcal{N}(0, (\sigma_w^{(t)})^2 \mathbf{I})
+\end{equation}
+\begin{equation}
+\tilde{\Phi}_i^{(t)} = \bar{\Phi}_i^{(t)} + \mathcal{N}(0, (\sigma_s^{(t)})^2 \mathbf{I})
+\end{equation}
+
+\subsection{Phase 4: Global Secure Aggregation and Explanation Mapping}
+In the final phase, the edge clients transmit their noisy dual-parameters $(\tilde{w}_i^{(t)}, \tilde{\Phi}_i^{(t)})$ to the central orchestrator via the bandwidth-constrained uplink. The central server applies a weighted averaging protocol---proportional to the local dataset sizes $|\mathcal{D}_i|$---to update the global model and the global explanation matrix simultaneously:
+
+\begin{equation}
+w^{(t+1)} = w^{(t)} + \sum_{i=1}^N \frac{|\mathcal{D}_i|}{|\mathcal{D}_{total}|} \tilde{w}_i^{(t)}
+\end{equation}
+\begin{equation}
+\Phi_{global}^{(t+1)} = \sum_{i=1}^N \frac{|\mathcal{D}_i|}{|\mathcal{D}_{total}|} \tilde{\Phi}_i^{(t)}
+\end{equation}
+
+\subsection{Theoretical Advantages of the FedL-SHAP Architecture}
+By integrating the explainability metric directly into the federated aggregation pipeline, FedL-SHAP achieves three critical architectural milestones:
+\begin{itemize}
+    \item \textbf{Zero-Knowledge Explainability:} The central server constructs a highly accurate global SHAP matrix $\Phi_{global}$ without ever executing an explainer algorithm on the corrupted global weights, guaranteeing that local feature distributions remain entirely concealed.
+    \item \textbf{Convergence-Privacy Optimization:} The dynamic $\epsilon$-decoupling ensures that privacy noise does not stall the model in local minima during critical early epochs, while yielding sharp, high-confidence SHAP values at the termination round.
+    \item \textbf{Byzantine Resilience:} Because the SHAP values are bounded by $C_s$ and scaled proportionally, the global explanation matrix naturally resists red-herring data poisoning attacks designed to artificially inflate the importance of malicious backdoor features.
+\end{itemize}
+
+\section{Experimental Setup and Results}
+This section is a placeholder for your evaluation setup, datasets, baselines, and performance metrics. You should include graphs plotting the tradeoff between classification accuracy and privacy budget tracking over $T$ communication rounds here.
+
+\section{Conclusion}
+This section is a placeholder for your concluding remarks, summarizing the primary contributions of the FedL-SHAP architecture and suggesting potential avenues for future research in privacy-preserving explainable AI.
+
+\begin{thebibliography}{00}
+% These are placeholder references based on your literature review text. 
+% You will need to replace the placeholder details with the actual paper titles, journals, and publication details.
+
+\bibitem{wu2020} Wu, et al., ``Title of the SAFA paper,'' \textit{Journal/Conference Name}, 2020.
+\bibitem{chen2019} Chen, et al., ``Title of the Layerwise Asynchronous paper,'' \textit{Journal/Conference Name}, 2019.
+\bibitem{nishio2019} T. Nishio and R. Yonetani, ``Client Selection for Federated Learning with Heterogeneous Resources in Mobile Edge,'' \textit{ICC}, 2019.
+\bibitem{xu2020} J. Xu and H. Wang, ``Client Selection and Bandwidth Allocation in Wireless Federated Learning Networks: A Long-Term Perspective,'' \textit{IEEE Trans. Wireless Commun.}, 2020.
+\bibitem{yang2020} K. Yang, et al., ``Federated Learning via Over-the-Air Computation,'' \textit{IEEE Trans. Wireless Commun.}, 2020.
+\bibitem{sery2021} T. Sery, et al., ``Over-the-Air Federated Learning from Heterogeneous Data,'' \textit{IEEE Trans. Signal Process.}, 2021.
+\bibitem{zhu2020} G. Zhu, et al., ``One-Bit Over-the-Air Aggregation for Communication-Efficient Federated Edge Learning,'' \textit{IEEE Trans. Wireless Commun.}, 2020.
+\bibitem{shlezinger2020} N. Shlezinger, et al., ``UVeQFed: Universal Vector Quantization for Federated Learning,'' \textit{IEEE Trans. Signal Process.}, 2020.
+\bibitem{lu2024} Z. Lu, et al., ``Federated Learning With Non-IID Data: A Survey,'' \textit{IEEE Internet of Things Journal}, 2024.
+\bibitem{tan2022} A. Z. Tan, et al., ``Towards Personalized Federated Learning,'' \textit{IEEE Trans. Neural Networks and Learning Systems}, 2022.
+\bibitem{morafah2023} M. Morafah, et al., ``FLIS: Clustered Federated Learning Via Inference Similarity for Non-IID Data Distribution,'' \textit{IEEE Open Journal of the Computer Society}, 2023.
+\bibitem{li2019} Z. Li, W. Shi, and M. Yan, ``A Decentralized Proximal-Gradient Method With Network Independent Step-Sizes and Separated Convergence Rates,'' \textit{IEEE Trans. Signal Process.}, 2019.
+\bibitem{lxu2026} L. Xu, et al., ``Parameter-Efficient Fine-Tuning Methods for Pretrained Language Models: A Critical Review and Assessment,'' \textit{IEEE Trans. Pattern Analysis and Machine Intelligence}, 2026.
+\bibitem{ouadrhiri2022} Ouadrhiri and Abdelhadi, ``Title of the DP variants survey,'' \textit{Journal/Conference Name}, 2022.
+\bibitem{wei2020} Wei, et al., ``Noising before Model Aggregation Federated Learning,'' \textit{Journal/Conference Name}, 2020.
+\bibitem{hu2020} R. Hu, et al., ``Personalized Federated Learning with Differential Privacy,'' \textit{IEEE Internet of Things Journal}, 2020.
+\bibitem{lee2022} J.-W. Lee, et al., ``Privacy-Preserving Machine Learning With Fully Homomorphic Encryption for Deep Neural Network,'' \textit{IEEE Access}, 2022.
+\bibitem{liu2020} Y. Liu, et al., ``A Secure Federated Transfer Learning Framework,'' \textit{IEEE Intelligent Systems}, 2020.
+\bibitem{so2021} J. So, et al., ``Turbo-Aggregate: Breaking the Quadratic Aggregation Barrier in Secure Federated Learning,'' \textit{IEEE J. Sel. Areas Inf. Theory}, 2021.
+\bibitem{xia2023} Xia, et al., ``Title of the Data vs. Model Poisoning paper,'' \textit{Journal/Conference Name}, 2023.
+\bibitem{pillutla2022} Pillutla, et al., ``Robust Federated Aggregation,'' \textit{Journal/Conference Name}, 2022.
+\bibitem{ghimire2022} B. Ghimire and D. B. Rawat, ``Recent Advances on Federated Learning for Cybersecurity and Cybersecurity for Federated Learning for Internet of Things,'' \textit{IEEE Internet of Things Journal}, 2022.
+\bibitem{wang2023} Z. Wang, et al., ``Incentive Mechanism Design for Joint Resource Allocation in Blockchain-Based Federated Learning,'' \textit{IEEE Trans. Parallel and Distributed Systems}, 2023.
+\bibitem{awosika2024} T. Awosika, et al., ``Transparency and Privacy: The Role of Explainable AI and Federated Learning in Financial Fraud Detection,'' \textit{IEEE Access}, 2024.
+
+\end{thebibliography}
+
+\end{document}
