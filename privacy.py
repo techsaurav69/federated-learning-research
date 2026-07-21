@@ -101,12 +101,16 @@ def dynamic_epsilon_split(
     epsilon_w = epsilon_t * decay
     epsilon_s = epsilon_t * (1.0 - decay)
 
-    # Ensure neither budget is zero (avoid division by zero in sigma computation)
-    min_eps = epsilon_t * 0.01  # Floor at 1% of total budget
+    # Two-level floor: prevents catastrophic noise (σ_w blowing up) when ε is very small.
+    # Relative floor: at least 1% of total budget.
+    # Absolute floor: at least min(0.5, 10% of total ε) — critical for ε≤5 regimes.
+    rel_floor = epsilon_t * 0.01
+    abs_floor = min(0.5, epsilon_t * 0.10)
+    min_eps = max(rel_floor, abs_floor)
     epsilon_w = max(epsilon_w, min_eps)
     epsilon_s = max(epsilon_s, min_eps)
 
-    # Renormalize to sum to epsilon_t
+    # Renormalize to sum exactly to epsilon_t
     total = epsilon_w + epsilon_s
     epsilon_w = epsilon_w * (epsilon_t / total)
     epsilon_s = epsilon_s * (epsilon_t / total)

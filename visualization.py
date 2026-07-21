@@ -18,6 +18,7 @@ import glob
 import numpy as np
 import pandas as pd
 import matplotlib
+import matplotlib.ticker
 matplotlib.use("Agg")  # Non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -54,8 +55,8 @@ def setup_plot_style():
 METHOD_NAMES = {
     "fedavg": "FedAvg (No Privacy)",
     "fedavg_uniform_dp": "FedAvg + Uniform DP",
-    "fedavg_global_shap": "FedAvg + Global SHAP",
-    "fedavg_fixed_split": "FedAvg + Fixed Split",
+    "fedavg_global_shap": "FedAvg + Global SHAP (Non-Private Oracle)",  # not a DP-constrained method
+    "fedavg_fixed_split": "FedAvg + Fixed-Split DP",
     "fedl_shap": "FedL-SHAP (Proposed)",
 }
 
@@ -131,6 +132,7 @@ def plot_accuracy_vs_rounds(csv_dir: str, plots_dir: str):
     ax.set_title("Classification Performance vs. Communication Rounds")
     ax.legend(loc="lower right", framealpha=0.9)
     ax.grid(True)
+    ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))  # integer round ticks
 
     filepath = os.path.join(plots_dir, "fig2_accuracy_vs_rounds.png")
     fig.savefig(filepath)
@@ -172,7 +174,10 @@ def plot_shap_similarity_vs_rounds(csv_dir: str, plots_dir: str):
 
     ax.set_xlabel("Communication Round")
     ax.set_ylabel("SHAP Cosine Similarity")
-    ax.set_title("Explanation Fidelity vs. Communication Rounds")
+    ax.set_title(
+        "Explanation Fidelity vs. Communication Rounds\n"
+        "(Global SHAP = non-private oracle; Fixed-Split & FedL-SHAP apply DP)"
+    )
     ax.set_ylim(-0.1, 1.1)
     ax.legend(loc="lower right", framealpha=0.9)
     ax.grid(True)
@@ -266,12 +271,16 @@ def plot_dynamic_budget(csv_dir: str, plots_dir: str, cfg: ExperimentConfig):
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
-    # Left: ε_w and ε_s for the default λ
+    # Left: ε_w and ε_s for the default λ.
+    # Fall back to the first available key if the default (λ=2.0) was not swept.
     default_key = f"lambda_{cfg.privacy.lambda_decay}"
+    if default_key not in schedule_data and schedule_data:
+        default_key = sorted(schedule_data.keys())[0]
     if default_key in schedule_data:
         eps_w = schedule_data[default_key]["epsilon_w"]
         eps_s = schedule_data[default_key]["epsilon_s"]
         rounds = list(range(len(eps_w)))
+        lam_label = default_key.replace("lambda_", "")  # e.g. "2.0"
 
         ax1.plot(rounds, eps_w, label="ε_w (Weights)", color="#2196F3", linewidth=2.5)
         ax1.plot(rounds, eps_s, label="ε_s (SHAP)", color="#F44336", linewidth=2.5)
@@ -281,7 +290,7 @@ def plot_dynamic_budget(csv_dir: str, plots_dir: str, cfg: ExperimentConfig):
                      label="50/50 Split")
         ax1.set_xlabel("Communication Round")
         ax1.set_ylabel("Privacy Budget (ε)")
-        ax1.set_title(f"Dynamic ε-Decoupling (λ = {cfg.privacy.lambda_decay})")
+        ax1.set_title(f"Dynamic ε-Decoupling (λ = {lam_label})")  # uses actual key, not hardcoded
         ax1.legend(framealpha=0.9)
         ax1.grid(True)
 

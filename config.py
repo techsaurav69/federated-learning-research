@@ -106,9 +106,9 @@ def get_quick_test_config() -> ExperimentConfig:
     cfg.federated.local_epochs = 1             # Single epoch for speed
     cfg.federated.batch_size = 128             # Larger batches = fewer iterations
     cfg.data.num_shap_samples = 50
-    cfg.privacy.epsilon_values = [2.0, 8.0]
-    cfg.privacy.lambda_values = [1.0, 3.0]
-    cfg.byzantine.malicious_fractions = [0.0, 0.2]
+    cfg.privacy.epsilon_values = [2.0, 5.0, 8.0, 20.0]       # richer Pareto sweep (was [2.0, 8.0])
+    cfg.privacy.lambda_values = [1.0, 2.0, 3.0]               # includes default λ=2.0 → fixes Fig5 blank panel
+    cfg.byzantine.malicious_fractions = [0.0, 0.1, 0.2, 0.3]  # more fractions → fixes Fig8 (was [0.0, 0.2])
     return cfg
 
 
