@@ -102,7 +102,7 @@ def get_quick_test_config() -> ExperimentConfig:
     cfg = ExperimentConfig()
     cfg.federated.num_clients = 5
     cfg.federated.clients_per_round = 5
-    cfg.federated.communication_rounds = 10
+    cfg.federated.communication_rounds = 15
     cfg.federated.local_epochs = 1             # Single epoch for speed
     cfg.federated.batch_size = 128             # Larger batches = fewer iterations
     cfg.data.num_shap_samples = 50
@@ -116,7 +116,7 @@ def get_mnist_config() -> ExperimentConfig:
     """Full experiment config for MNIST."""
     cfg = ExperimentConfig()
     cfg.data.dataset = "mnist"
-    cfg.federated.communication_rounds = 100
+    cfg.federated.communication_rounds = 50
     cfg.federated.num_clients = 10
     cfg.federated.clients_per_round = 10
     return cfg

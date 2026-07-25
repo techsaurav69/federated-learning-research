@@ -344,8 +344,8 @@ def run_federated(
         cos_sim = topk = mse = spearman = 0.0
         if global_shap is not None and ground_truth_shap is not None:
             cos_sim = shap_cosine_similarity(global_shap, ground_truth_shap)
-            # k=10 for high-dim MNIST (784-dim); k=5 for low-dim creditcard (29-dim)
-            k_topk = 10 if dataset_name == "mnist" else 5
+            # k=50 for high-dim MNIST (784-dim); k=5 for low-dim creditcard (29-dim)
+            k_topk = 50 if dataset_name == "mnist" else 5
             topk = shap_top_k_agreement(global_shap, ground_truth_shap, k=k_topk)
             mse = shap_mse(global_shap, ground_truth_shap)
             spearman = shap_spearman_rank(global_shap, ground_truth_shap)
@@ -371,7 +371,7 @@ def run_federated(
         if (t + 1) % max(1, T // 10) == 0:
             tqdm.write(
                 f"    Round {t+1}/{T} | Acc: {accuracy:.2f}% | Loss: {loss:.4f}"
-                f" | SHAP cos: {cos_sim:.4f} | Top-5: {topk:.2f}"
+                f" | SHAP cos: {cos_sim:.4f} | Top-K: {topk:.2f}"
             )
 
     return results
