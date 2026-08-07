@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Data
+data/
+*.csv
+*.json
+
+# Results (generated files — reproduce by running experiments)
+results/
+
+# Backups and drafts
+backup_pre_q1/
+*.txt
+!requirements.txt
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db

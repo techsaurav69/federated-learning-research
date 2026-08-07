@@ -68,17 +68,21 @@ def get_model(dataset_name: str, device: str = "cpu") -> nn.Module:
     Factory function to create the appropriate model for a given dataset.
 
     Args:
-        dataset_name: "mnist" or "creditcard"
+        dataset_name: "mnist", "fashionmnist", or "creditcard"
         device: Target device ("cpu" or "cuda")
 
     Returns:
         Initialized model on the specified device.
     """
-    if dataset_name == "mnist":
+    if dataset_name in ("mnist", "fashionmnist"):
+        # Both MNIST and Fashion-MNIST are 1-channel 28x28 grayscale images
         model = SimpleCNN(num_classes=10)
     elif dataset_name == "creditcard":
         model = TabularMLP(input_dim=29, num_classes=2)
     else:
-        raise ValueError(f"Unknown dataset: {dataset_name}. Use 'mnist' or 'creditcard'.")
+        raise ValueError(
+            f"Unknown dataset: {dataset_name}. Use 'mnist', 'fashionmnist', or 'creditcard'."
+        )
 
     return model.to(device)
+

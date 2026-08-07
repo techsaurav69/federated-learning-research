@@ -104,6 +104,82 @@ class FederatedClient:
 
         return model_update, local_model
 
+    def local_train_fedprox(
+        self,
+        global_model: nn.Module,
+        local_epochs: int,
+        learning_rate: float,
+        mu: float = 0.01,
+        momentum: float = 0.9,
+        weight_decay: float = 1e-4,
+    ) -> Dict[str, torch.Tensor]:
+        """
+        FedProx local training — adds a proximal term to keep local model
+        close to the global model, which improves convergence under Non-IID data.
+
+        Loss = CrossEntropy(w) + (mu/2) * ||w - w_global||^2
+
+        Args:
+            global_model: Current global model weights w^(t).
+            local_epochs: E — number of local epochs.
+            learning_rate: Local SGD learning rate.
+            mu: Proximal term coefficient (default 0.01; higher = stronger pull toward global).
+            momentum: SGD momentum.
+            weight_decay: L2 regularization.
+
+        Returns:
+            (model_update, local_model)
+        """
+        local_model = copy.deepcopy(global_model).to(self.device)
+        local_model.train()
+
+        # Freeze a copy of global weights for the proximal term
+        global_params = {
+            name: param.clone().detach().to(self.device)
+            for name, param in global_model.named_parameters()
+        }
+
+        initial_weights = {
+            name: param.clone().detach()
+            for name, param in local_model.named_parameters()
+        }
+
+        optimizer = optim.SGD(
+            local_model.parameters(),
+            lr=learning_rate,
+            momentum=momentum,
+            weight_decay=weight_decay,
+        )
+        criterion = nn.CrossEntropyLoss()
+
+        for epoch in range(local_epochs):
+            for batch_data in self.data_loader:
+                inputs, labels = batch_data[0].to(self.device), batch_data[1].to(self.device)
+
+                if inputs.dim() == 3:
+                    inputs = inputs.unsqueeze(1)
+
+                optimizer.zero_grad()
+                outputs = local_model(inputs)
+                loss = criterion(outputs, labels)
+
+                # Proximal term: (mu/2) * sum ||w_k - w_global||^2
+                prox_term = 0.0
+                for name, param in local_model.named_parameters():
+                    prox_term += ((param - global_params[name]) ** 2).sum()
+                loss = loss + (mu / 2.0) * prox_term
+
+                loss.backward()
+                optimizer.step()
+
+        model_update = {}
+        for name, param in local_model.named_parameters():
+            model_update[name] = (param.detach() - initial_weights[name]).cpu()
+
+        return model_update, local_model
+
+
+
     def compute_local_shap(
         self,
         model: nn.Module,
@@ -271,7 +347,8 @@ class FederatedClient:
         if method == "fedavg":
             return model_update, None
 
-        elif method == "fedavg_uniform_dp":
+        elif method in ("fedavg_uniform_dp", "fedprox"):
+            # FedProx: same DP treatment as FedAvg+uniform DP — clip weights, no SHAP path
             clipped = clip_model_update(model_update, clip_weight)
             return clipped, None
 

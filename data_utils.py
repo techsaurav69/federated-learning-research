@@ -34,6 +34,33 @@ def load_mnist(data_dir: str = "./data") -> Tuple[TensorDataset, TensorDataset]:
     return train_data, test_data
 
 
+def load_fashionmnist(data_dir: str = "./data") -> Tuple[TensorDataset, TensorDataset]:
+    """
+    Load Fashion-MNIST dataset via torchvision.
+
+    Same 28x28 grayscale format as MNIST — 10 clothing categories.
+    Uses the standard normalization for Fashion-MNIST.
+
+    Returns:
+        (train_dataset, test_dataset) as torchvision datasets.
+    """
+    from torchvision import datasets, transforms
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.2860,), (0.3530,))   # Fashion-MNIST mean/std
+    ])
+
+    train_data = datasets.FashionMNIST(
+        root=data_dir, train=True, download=True, transform=transform
+    )
+    test_data = datasets.FashionMNIST(
+        root=data_dir, train=False, download=True, transform=transform
+    )
+
+    return train_data, test_data
+
+
 def load_creditcard(csv_path: str = "./data/creditcard.csv") -> Tuple[TensorDataset, TensorDataset]:
     """
     Load Credit Card Fraud dataset from CSV.
@@ -171,7 +198,7 @@ def get_client_loaders(
     Main entry point: load dataset, partition across clients, return DataLoaders.
 
     Args:
-        dataset_name: "mnist" or "creditcard"
+        dataset_name: "mnist", "fashionmnist", or "creditcard"
         num_clients: Number of federated clients.
         alpha: Dirichlet α for Non-IID partitioning.
         batch_size: Batch size for DataLoaders.
@@ -189,11 +216,14 @@ def get_client_loaders(
     if dataset_name == "mnist":
         train_dataset, test_dataset = load_mnist(data_dir)
         num_features = 784  # 28 * 28 flattened for SHAP
+    elif dataset_name == "fashionmnist":
+        train_dataset, test_dataset = load_fashionmnist(data_dir)
+        num_features = 784  # same 28 * 28 as MNIST
     elif dataset_name == "creditcard":
         train_dataset, test_dataset = load_creditcard(creditcard_path)
-        num_features = 29   # V1–V28 + log(Amount)
+        num_features = 29   # V1-V28 + log(Amount)
     else:
-        raise ValueError(f"Unknown dataset: {dataset_name}")
+        raise ValueError(f"Unknown dataset: {dataset_name}. Use 'mnist', 'fashionmnist', or 'creditcard'.")
 
     # Extract labels and partition
     labels = get_labels(train_dataset)

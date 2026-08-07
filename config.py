@@ -13,13 +13,14 @@ from typing import List, Optional
 class FederatedConfig:
     """Core federated learning hyperparameters."""
     num_clients: int = 10                # N: total number of clients
-    clients_per_round: int = 10          # Clients sampled per round (set = num_clients for full participation)
+    clients_per_round: int = 10          # Clients sampled per round
     local_epochs: int = 5                # E: local SGD epochs per round
     communication_rounds: int = 100      # T: total communication rounds
     batch_size: int = 64                 # Local training batch size
     learning_rate: float = 0.01          # Local SGD learning rate
-    momentum: float = 0.9               # SGD momentum
+    momentum: float = 0.9                # SGD momentum
     weight_decay: float = 1e-4           # L2 regularization
+    fedprox_mu: float = 0.01             # FedProx proximal term coefficient (μ)
 
 
 @dataclass
@@ -28,24 +29,23 @@ class PrivacyConfig:
     epsilon: float = 50.0                # Per-round privacy budget (central DP model)
     delta: float = 1e-5                  # Privacy failure probability
     clip_weight: float = 5.0             # C_w: L2 clipping threshold for model updates
-    clip_shap: float = 1.0              # C_s: L2 clipping threshold for SHAP vectors
-    lambda_decay: float = 2.0           # Decay coefficient for dynamic epsilon-decoupling
+    clip_shap: float = 1.0               # C_s: L2 clipping threshold for SHAP vectors
+    lambda_decay: float = 2.0            # λ: Decay coefficient for dynamic ε-decoupling
     # Epsilon values to sweep for Pareto frontier experiments
     epsilon_values: List[float] = field(default_factory=lambda: [5.0, 10.0, 20.0, 50.0, 100.0])
-    # Lambda values for sensitivity analysis
+    # Lambda values for ablation study
     lambda_values: List[float] = field(default_factory=lambda: [0.5, 1.0, 2.0, 5.0])
 
 
 @dataclass
 class DataConfig:
     """Dataset and partitioning configuration."""
-    dataset: str = "mnist"               # "mnist" or "creditcard"
+    dataset: str = "mnist"               # "mnist", "fashionmnist", or "creditcard"
     data_dir: str = "./data"             # Directory for downloaded/stored datasets
-    creditcard_path: str = "./data/creditcard.csv"  # Path to Kaggle Credit Card CSV
+    creditcard_path: str = "./data/creditcard.csv"
     dirichlet_alpha: float = 0.5         # α: Dirichlet concentration for Non-IID split
     test_fraction: float = 0.2           # Fraction of data reserved for global test set
     num_shap_samples: int = 100          # Number of background samples for SHAP computation
-    # Alpha values to sweep for Non-IID experiments
     alpha_values: List[float] = field(default_factory=lambda: [0.1, 0.5, 1.0, 10.0])
 
 
@@ -55,7 +55,6 @@ class ByzantineConfig:
     attack_type: str = "inflate"         # "inflate", "random", "sign_flip"
     malicious_fraction: float = 0.3      # Fraction of clients that are malicious
     inflation_factor: float = 10.0       # Multiplier for feature inflation attack
-    # Fractions to sweep for Byzantine experiments
     malicious_fractions: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.2, 0.3, 0.4])
 
 
@@ -74,17 +73,20 @@ class ExperimentConfig:
 
     # Reproducibility
     seed: int = 42
+    # Multiple seeds for statistical rigor (mean ± std over N runs)
+    seeds: List[int] = field(default_factory=lambda: [42, 123, 456, 789, 1024])
 
     # Device
-    device: str = "cuda"  # Will be overridden to "cpu" if CUDA unavailable
+    device: str = "cuda"  # Overridden to "cpu" if CUDA unavailable
 
     # Methods to compare
     methods: List[str] = field(default_factory=lambda: [
-        "fedavg",               # FedAvg (No Privacy) — upper bound
-        "fedavg_uniform_dp",    # FedAvg + Uniform DP on weights only
-        "fedavg_global_shap",   # FedAvg + SHAP computed on global model post-aggregation
-        "fedavg_fixed_split",   # FedAvg + Local SHAP with fixed 50/50 ε split
-        "fedl_shap",            # FedL-SHAP (Proposed) — dynamic ε-decoupling
+        "fedavg",               # M1: FedAvg (No Privacy) — accuracy upper bound
+        "fedavg_uniform_dp",    # M2: FedAvg + Uniform DP on weights only
+        "fedavg_global_shap",   # M3: FedAvg + SHAP on global model (no local SHAP)
+        "fedavg_fixed_split",   # M4: FedAvg + Local SHAP with fixed 50/50 ε split
+        "fedl_shap",            # M5: FedL-SHAP (Proposed) — dynamic ε-decoupling
+        "fedprox",              # M6: FedProx baseline — proximal term, no SHAP
     ])
 
     def __post_init__(self):
@@ -95,20 +97,21 @@ class ExperimentConfig:
         os.makedirs(self.data.data_dir, exist_ok=True)
 
 
-# ─── Preset Configurations ───────────────────────────────────────────────────
+# ─── Preset Configurations ────────────────────────────────────────────────────
 
 def get_quick_test_config() -> ExperimentConfig:
-    """Minimal config for fast smoke testing."""
+    """Minimal config for fast smoke testing (~5–10 min on CPU)."""
     cfg = ExperimentConfig()
     cfg.federated.num_clients = 5
     cfg.federated.clients_per_round = 5
-    cfg.federated.communication_rounds = 15
-    cfg.federated.local_epochs = 1             # Single epoch for speed
-    cfg.federated.batch_size = 128             # Larger batches = fewer iterations
-    cfg.data.num_shap_samples = 50
-    cfg.privacy.epsilon_values = [2.0, 5.0, 8.0, 20.0]       # richer Pareto sweep (was [2.0, 8.0])
-    cfg.privacy.lambda_values = [1.0, 2.0, 3.0]               # includes default λ=2.0 → fixes Fig5 blank panel
-    cfg.byzantine.malicious_fractions = [0.0, 0.1, 0.2, 0.3]  # more fractions → fixes Fig8 (was [0.0, 0.2])
+    cfg.federated.communication_rounds = 10
+    cfg.federated.local_epochs = 1
+    cfg.federated.batch_size = 128
+    cfg.data.num_shap_samples = 30
+    cfg.privacy.epsilon_values = [2.0, 8.0, 20.0]
+    cfg.privacy.lambda_values = [1.0, 2.0, 3.0]
+    cfg.byzantine.malicious_fractions = [0.0, 0.2, 0.4]
+    cfg.seeds = [42, 123]   # 2 seeds for quick test
     return cfg
 
 
@@ -122,12 +125,23 @@ def get_mnist_config() -> ExperimentConfig:
     return cfg
 
 
+def get_fashionmnist_config() -> ExperimentConfig:
+    """Full experiment config for Fashion-MNIST (same CNN architecture as MNIST)."""
+    cfg = ExperimentConfig()
+    cfg.data.dataset = "fashionmnist"
+    cfg.federated.communication_rounds = 50
+    cfg.federated.num_clients = 10
+    cfg.federated.clients_per_round = 10
+    cfg.privacy.epsilon = 50.0
+    return cfg
+
+
 def get_creditcard_config() -> ExperimentConfig:
-    """Full experiment config for Credit Card Fraud."""
+    """Full experiment config for Credit Card Fraud (tabular)."""
     cfg = ExperimentConfig()
     cfg.data.dataset = "creditcard"
     cfg.federated.communication_rounds = 100
     cfg.federated.num_clients = 10
     cfg.federated.clients_per_round = 10
-    cfg.data.dirichlet_alpha = 1.0  # Less skew for tabular
+    cfg.data.dirichlet_alpha = 1.0
     return cfg
