@@ -175,7 +175,7 @@ Paste this into a Colab cell to run everything:
 ```bibtex
 @inproceedings{fedlshap2026,
   title     = {Privacy-Preserving Explainability in Federated Learning via Dynamic ε-Decoupling},
-  author    = {[Author Names]},
+  author    = {Pratyush Adhikari, Saurabh Biraji },
   year      = {2026}
 }
 ```
